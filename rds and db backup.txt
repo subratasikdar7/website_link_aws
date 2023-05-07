@@ -1,0 +1,47 @@
+/** MySQL database username */
+define( 'DB_USER', 'servername' );
+
+/** MySQL database password */
+define( 'DB_PASSWORD', 'E8eR(Gin#H' );
+
+/** MySQL hostname */
+define( 'DB_HOST', 'rds.cluster-ceq8ehph3ljd.ca-central-1.rds.amazo                                          naws.com' );
+/**define( 'DB_HOST', 'live-rds-proxy.proxy-ceq8ehph3ljd.ca-central-1.r                                          ds.amazonaws.com' ); */
+/** Database Charset to use in creating database tables. */
+define( 'DB_CHARSET', 'utf8' );
+
+
+
+'DB_USER', 'perlive'
+'DB_PASSWORD', 'EpeR(Gin#H'
+live-rds.cluster-ceqph3ljd.ca-central-1.rds.amazonaws.com'
+
+
+#! /bin/bash
+cd /root/eshipperlive-rds-bkp
+TIME=`date +%b-%d-%y`
+USER=eshipperlive
+PASS=ER(G#H
+mysqldump --perlive=0 -h perlive-rds.cluster-ceq8ehph3ljd.ca-central-1.rds.amazonaws.com -u $USER -p$PASS --set-gtid-purged=OFF perlive > perlive_db_$TIME.sql
+find /root/perlive-rds-bkp/* -mtime +10 -exec rm {} \;
+
+'E8(G\n#H'
+
+
+
+
+#!/bin/bash
+cd /root
+
+MYSQL_USER="epperstg"
+MYSQL_PASS="E8eR(G#H"
+MYSQL_CONN="-u${MYSQL_USER} -p${MYSQL_PASS}"
+DB_NAME="staging_new"
+S3_LOCATION="s3://live-backup/staging_backup/staging_db/"
+FILE_NAME="staging-db-backup-$(date +%F).sql.gz"
+MYSQL_BKP_NAME="staging-db-backup-$(date +%F).sql"
+
+MYSQLDUMP_OPTIONS="--routines --triggers --single-transaction"
+mysqldump ${MYSQL_CONN} ${DB_NAME} > $MYSQL_BKP_NAME
+aws s3 cp $MYSQL_BKP_NAME $S3_LOCATION
+rm -rf /root/$MYSQL_BKP_NAME

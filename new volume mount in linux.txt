@@ -1,0 +1,11 @@
+ lsblk
+ file -s /dev/nvme1n1
+ mkfs -t ext4 /dev/nvme1n1
+ mount /dev/nvme1n1 /backup/
+ mkdir /api-backup
+ mount /dev/xvdf /api-backup
+ df -lh
+
+
+
+

@@ -1,0 +1,93 @@
+aws s3 cp devbackup-Mar-23-22.tar.gz s3://servernamebackup/servernamedatabackup/ --no-verify-ssl
+aws s3 sync staging-server-name-backup-Mar-24-22.tar.gz s3://server-name-databackup-2022/
+cd /mnt/sharehd_backup/servername_backup_2022
+ls -sh
+aws s3 ls servernamebackup/servernamedatabackup/
+screen -r 28269.data
+screen -r 5369.s3upload
+screen -r 59421.dbupload
+cat /home/user/.aws/credentials
+screen -X -S [session # you want to kill] quit
+pass- 
+
+rsync -avL --progress -e "ssh -i /mnt/sharehd_backup/backup/id_rsa" root@ip-address:/mnt/backup/git_repo_backup /mnt/sharehd_backup/git_repo_backup/
+
+
+
+
+pmtool:
+#########
+cd /mnt/sharehd_backup/git_repo_backup/
+pm.servername.com > ip > unified_id_rsa >> ssh -i /mnt/sharehd_backup/pmtool_git_repo_backup/unified_id_rsa root@ip
+                                                    new >> ssh -i /mnt/sharehd_backup/pmtool_git_repo_backup/unified_id_rsa root@ip (new)
+cd /mnt/backup/git_repo_backup  >> df -Th >> du -sh >> 
+rm -rf older filename (keep only one file latest one)
+
+cd /mnt/nfs_backup/pmtool_git_repo_backup/pmtool_git_repo_backup && ls -sh
+
+server-name:
+####### 
+cd /mnt/sharehd_backup/git_repo_backup/git_repo_backup/ (keep only two file latest one)
+
+/mnt/sharehd_backup
+
+aws s3 cp servername-alldb-16-Mar-2022.sql s3://servernamebackup/servername_db_backup/
+aws s3 cp /mnt/backup/mongo-backup/laksumi/. s3://servernamebackup/servername_db_backup/db2022/ --recursive
+aws s3 cp /mnt/sharehd_backup/servername_db_backup/servername-alldb-18-Mar-2022.sql s3://servernamebackup/servername_db_backup/db2022/ --recursive
+aws s3 cp git-repositories-backup-Mar-16-22.tar.gz s3://servernamebackup/backup/ --recursive
+
+
+
+
+aws s3 ls 
+
+
+server-name server to zabbix server
+#############################
+ssh -i /home/unified/zabbix_id_rsa ubuntu@ip of destination (not needed)
+
+eval `ssh-agent -s`
+ssh-add id_rsa
+scp -r /mnt/sharehd_backup/servername_backup_2022/test/servername.com-backup-Apr-05-22.tar.gz ubuntu@ip:/home/ubuntu/backup
+eval `ssh-agent -s`
+ssh-add id_rsa
+ssh colorcom@ip
+
+eshipper wp rocket backup:
+##########################
+aws s3 cp s3://live-eshipper-media-wprocket /home/server/eshiper-wprocket --recursive
+zip -r eshipper-media-wprocket-backup-27-10-22 wp-content
+aws s3 cp eshipper-media-wprocket-backup.zip s3://eshipper-media-wprocket-backup
+
+sudo apt install ntpdate 
+sudo ntpdate  time.nist.gov  #to solve the error: S3 Error: The difference between the request time and the current time is too large
+
+#######################################
+truncate laravel log
+##############################
+sudo su
+cd /home/
+su vozstaging
+1. /var/www/html/uat-backend/storage/logs/laravel.log
+2. truncate -s 0 laravel.log
+/home/uat/sg2/data-panel-backend
+
+########################################################
+cd /mnt/tech_data_back && ls -sh
+cd /mnt/tech_db_back && ls -sh
+cd /mnt/git_repo_backup/git_repo_backup && ls -sh
+cd /mnt/db-backups/db_backup && ls -sh
+screen -r 28544.tool-backup
+
+######################  
+rsync -avL --progress -e "ssh -i /root/unified_id_rsa" root@ip:/mnt/backup/git_repo_backup /mnt/git_repo_backup
+
+to generate ssh key : ssh-keygen -t rsa -b 4096 -C "subrata@gmail.com"
+
+/mnt/sharehd_backup/git_repo_backup/
+rsync -avL --progress -e "ssh -i /mnt/sharehd_backup/git_repo_backup/id_rsa" root@ip:/mnt/backup/git_repo_backup /mnt/
+
+rsync -avL --progress -e "ssh -i /root/id_rsa" root@ip:/mnt/backup/git_repo_backup /mnt/git_repo_backup
+
+
+aws s3 cp /mnt/sharehd_backup/servername_2020_backup/ s3://servername-backup-2020 --recursive

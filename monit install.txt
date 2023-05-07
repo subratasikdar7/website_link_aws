@@ -1,0 +1,40 @@
+ sudo apt-get install monit
+    2  apt install update
+    3  apt-get update
+    4  sudo apt-get install monit
+    5  sudo vi /etc/monit/monitrc
+    6  apt install apache2
+    7  sudo vi /etc/monit/monitrc
+    8  /etc/init.d/monit start
+    9  sudo /etc/init.d/monit start
+   10  sudo monit -t
+   11  sudo /etc/init.d/monit restart
+   12  sudo tail -f /var/log/monit.log
+   13  systemctl status apache2
+   14  systemctl stop apache2
+   15  systemctl status apache2
+   16  systemctl stop apache2
+   17  systemctl status apache2
+   
+   sudo vi /etc/monit/monitrc
+   
+   
+   set daemon 30
+   set log /var/log/monit.log
+   set idfile /var/lib/monit/id
+   statefile /var/lib/monit/state
+   set eventqueue
+      basedir /var/lib/monit/events 
+      slots 100
+   set httpd port 2812 and
+     use address localhost  
+     allow localhost        
+     allow admin:monit
+	 
+    include /etc/monit/conf.d/*
+   include /etc/monit/conf-enabled/*
+
+check process apache with pidfile /run/apache2.pid
+start program = "/etc/init.d/apache2 start" with timeout 30 seconds
+stop program  = "/etc/init.d/apache2 stop"#
+	 

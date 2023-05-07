@@ -1,0 +1,76 @@
+/var/www/html/dev   >> 
+
+#!/bin/bash
+#Purpose = Backup of Important Data
+#START
+TIME=`date +%b-%d-%y`            
+FILENAME=demoserver-name-backup-$TIME.tar.gz    
+SRCDIR=/var/www/html/devserver-name 
+DESDIR=/mnt/sharehd_backup/server-name_backup_2022           
+tar -cpzf $DESDIR/$FILENAME $SRCDIR
+find /mnt/sharehd_backup/server-name_backup_2022/* -mtime +5 -exec rm {} \; 
+
+/var/www/html/stagingserver-name    >>
+
+#!/bin/bash
+#Purpose = Backup of Important Data
+#START
+TIME=`date +%b-%d-%y`            
+FILENAME=prod-backup-$TIME.tar.gz    
+SRCDIR=/var/www/html 
+DESDIR=/live-backup           
+tar -cpzf $DESDIR/$FILENAME $SRCDIR
+find /live-backup/* -mtime +10 -exec rm {} \;
+
+/var/www/html/server-name.com    >>
+
+#!/bin/bash
+#Purpose = Backup of Important Data
+#START
+TIME=`date +%b-%d-%y`        
+FILENAME=server-name.com-backup-$TIME.tar.gz
+SRCDIR=/var/www/html/server-name.com
+DESDIR=/mnt/sharehd_backup/server-name_backup_2022
+tar -cpzf $DESDIR/$FILENAME $SRCDIR
+find /mnt/sharehd_backup/server-name_backup_2022/* -mtime +4 -exec rm {} \;
+
+
+
+#######################################################################
+
+#!/bin/bash
+#Purpose = Backup of Important Data
+#START
+TIME=`date +%b-%d-%y`        
+FILENAME=prod-phase4-backup-$TIME.tar.gz
+SRCDIR=/var/www/html/phase4-site-new
+DESDIR=/mnt/tech_data_back
+tar -cpzf $DESDIR/$FILENAME $SRCDIR
+find /mnt/tech_data_back/* -mtime +10 -exec rm {} \;
+
+#############################################################################
+
+#!/bin/bash
+
+# Database credentials
+ user="root"
+ password="UnEchuI"
+ host="localhost"
+ db_name="prod_db"
+
+# Other options
+backup_path="/mnt/tech_db_back"
+date=$(date +"%d-%b-%Y")
+
+# Set default file permissions
+ umask 177
+
+# Dump database into SQL file
+ mysqldump --user=$user --password=$password --host=$host --set-gtid-purged=OFF prod_unified_db > $backup_path/$db_name-$date.sql
+
+# Delete files older than 10 days
+ find /mnt/unifiedinfotech_db_back/* -mtime +10 -exec rm {} \; 
+ 
+ ########################################
+ 
+ 

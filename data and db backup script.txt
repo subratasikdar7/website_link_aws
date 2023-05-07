@@ -1,0 +1,54 @@
+#!/bin/bash
+#Purpose = Backup of Important Data
+#START
+TIME=`date +%b-%d-%y`        
+FILENAME=backup-$TIME.tar.gz
+SRCDIR=/var/www/html/
+DESDIR=/root/code-backup/
+tar -cpzf $DESDIR/$FILENAME $SRCDIR
+find /root/code-backup/* -mtime +15 -exec rm {} \;
+
+
+
+
+#! /bin/bash
+cd /api-backup/db-backup
+TIME=`date +%b-%d-%y`
+USER=sukanta
+PASS=sukan3
+mysqldump --column-statistics=0 -h  sukanta-rds.cboeqhuagbmk.us-east-1.rds.amazonaws.com -u $USER -p$PASS --set-gtid-purged=OFF hcgprod_db > sukanta_db_$TIME.sql
+find /api-backup/db-backup/* -mtime +5 -exec rm {} \;
+
+#!/bin/bash
+
+# Database credentials
+ user="sukanta"
+ password="sukanta123"
+ host="localhost"
+ db_name="ping_live"
+
+# Other options
+backup_path="/root/db-backup"
+date=$(date +"%d-%b-%Y")
+
+# Set default file permissions
+ umask 177
+
+# Dump database into SQL file
+ mysqldump --user=$user --password=$password --host=$host --set-gtid-purged=OFF wineshipping_live > $backup_path/$db_name-$date.sql
+
+# Delete files older than 5 days
+ find /root/db-backup/* -mtime +15 -exec rm {} \; 
+
+
+db name: ping_live
+user: w1ipping
+pass: WPp!ng
+
+mysqldump -u w1ing -p ping_live > db_backup.sql
+mysqldump --no-tablespaces -u w1ping -p W!ng ping_live > db_backup_file.sql
+
+
+
+################
+mysqldump -u admin -p risaLive > riLive.sql

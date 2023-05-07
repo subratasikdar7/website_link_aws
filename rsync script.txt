@@ -1,0 +1,15 @@
+#!/bin/bash
+
+FILE_NAME="media-wprocket-backup-$(date +%F).zip"
+cd /home/ubuntu/wprocket
+aws s3 cp s3://live-media-wprocket /home/ubuntu/wprocket--recursive
+zip -r /home/ubuntu/wprocket/$FILE_NAME wp-content
+aws s3 cp /home/ubuntu/wprocket/$FILE_NAME s3://media-wprocket-backup
+rm -rf /home/ubuntu/wprocket/*
+
+
+
+
+#######################################
+#!/bin/bash
+rsync -avL --progress -e "ssh -i /root/id_rsa" root@ip:/mnt/backup/db_backup /mnt/db-backups

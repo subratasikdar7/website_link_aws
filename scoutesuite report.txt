@@ -1,0 +1,40 @@
+##################        Audit Server 1 
+
+########## Installing Lynis ##############################
+
+cd /usr/local/
+wget https://downloads.cisofy.com/lynis/lynis-3.0.4.tar.gz
+tar xf lynis-3.0.4.tar.gz
+sudo chmod 755 /usr/local/lynis/lynis
+/usr/local/lynis/lynis --version
+
+
+############# Lynix Auditing The System #####################
+/usr/local/lynis/lynis audit system
+cat /var/log/lynis-report.dat >> /home/ubuntu/vozadvisors-ec2-lynis-live-report-$(date +%F)
+chown ubuntu:ubuntu /home/ubuntu/vozadvisors-ec2-lynis-live-report-$(date +%F)
+
+
+################# Install Chkrootkit ###########################
+apt install chkrootkit
+
+######################   Audit using chkrootkit ###################
+chkrootkit >> /home/ubuntu/vozadvisors-ec2-chkrootkit-scan-report-$(date +%F)
+chown ubuntu:ubuntu /home/ubuntu/vozadvisors-ec2-chkrootkit-scan-report-$(date +%F)
+
+
+
+
+#######################################################################################
+apt install python3-pip
+pip3 install scoutsuite
+git clone https://github.com/nccgroup/ScoutSuite
+cd ScoutSuite
+virtualenv -p python3 venv
+source venv/bin/activate
+
+pip3 install -r requirements.txt
+python scout.py aws --access-keys --access-key-id YOUR-IAM-ID --secret-access-key IAM-ACCESS-KEY
+zip -r  scoutsuite-report-filename-$(date +%F).zip scoutsuite-report
+cp scoutsuite-report-filename-$(date +%F).zip /home/ubuntu
+chown ubuntu:ubuntu /home/ubuntu/scoutsuite-report-filename-$(date +%F).zip

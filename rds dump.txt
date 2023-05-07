@@ -1,0 +1,6 @@
+mysqldump --column-statistics=0 -h  prod-rds.jhgkk.us-east-1.rds.amazonaws.com -u username -p --set-gtid-purged=OFF hcgprod_db > hcgprod_db.sql
+
+mysqldump -h  live-rds.cluster-jgkh.ca-central-1.rds.amazonaws.com -u username -p --set-gtid-purged=OFF s3_location_to_store_data > filename_live_s3.sql
+
+
+

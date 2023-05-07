@@ -1,0 +1,7 @@
+#! /bin/bash
+cd /api-backup/db-backup
+TIME=`date +%b-%d-%y`
+USER=admin
+PASS=AppL
+mysqldump --column-statistics=0 -h  server-rds.cboeqhuak.us-east-1.rds.amazonaws.com -u $USER -p$PASS --set-gtid-purged=OFF prod_db > prod_db_$TIME.sql
+find /api-backup/db-backup/* -mtime +5 -exec rm {} \;

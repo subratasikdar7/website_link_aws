@@ -1,0 +1,401 @@
+#!/bin/bash
+
+# Check if script is being run by root
+if [[ $EUID -ne 0 ]]; then
+   printf "This script must be run as root!\n"
+   exit 1
+fi
+
+DIVIDER="\n***************************************\n\n"
+
+# Welcome and instructions
+printf $DIVIDER
+printf "Lyquix LAMP server setup on Ubuntu 18.04\n"
+printf $DIVIDER
+
+# Prompt to continue
+while true; do
+	read -p "Continue [Y/N]? " cnt1
+	case $cnt1 in
+		[Yy]* ) break;;
+		[Nn]* ) exit;;
+		* ) printf "Please answer Y or N\n";;
+	esac
+done
+
+# Set the hostname
+printf $DIVIDER
+printf "HOSTNAME\n"
+printf "Pick a hostname that identify this server.\nRecommended: use the main domain, e.g. example.com\n"
+while true; do
+	read -p "Hostname: " host
+	case $host in
+		"" ) printf "Hostname may not be left blank\n";;
+		* ) break;;
+	esac
+done
+echo "$host" > /etc/hostname
+hostname -F /etc/hostname
+printf "127.0.0.1       $host\n::1             $host\n" >> /etc/hosts;
+
+############################################################
+# Set the time zone
+printf $DIVIDER
+printf "TIME ZONE\n"
+printf "Please select the correct time zone. e.g. US > Eastern Time\n"
+read -p "Please ENTER to continue "
+dpkg-reconfigure tzdata
+
+############################################################################
+# Install and update software
+printf $DIVIDER
+printf "INSTALL AND UPDATE SOFTWARE\n"
+printf "Now the script will update Ubuntu and install all the necessary software.\n"
+printf " * You will be prompted to enter the password for the MySQL root user\n"
+read -p "Please ENTER to continue "
+apt-get -y update
+fallocate -l 4G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo apt update
+sudo apt install apache2
+sudo apt-get update
+sudo apt -y install software-properties-common
+sudo add-apt-repository ppa:ondrej/php
+sudo apt-get update
+sudo apt -y install php7.4
+php -v
+sudo apt-get install -y php7.4-cli php7.4-json php7.4-common php7.4-mysql php7.4-zip php7.4-gd php7.4-mbstring php7.4-curl php7.4-xml php7.4-bcmath
+sudo apt install composer -y
+sudo apt install mysql-server -y
+sudo apt install php7.4-mbstring php7.4-zip php7.4-gd php7.4-curl php7.4-json -y
+sudo apt install php7.4-mysql php7.4-cli php7.4-cgi php7.4-gd -y
+
+sudo systemctl restart apache2
+sudo service apache2 restart
+sudo service apache2 enable
+
+
+# APACHE configuration
+printf $DIVIDER
+printf "APACHE CONFIGURATION\n"
+read -p "Please ENTER to continue "
+
+printf "Enabling Apache modules...\n"
+a2enmod expires headers rewrite ssl suphp mpm_prefork security2
+
+if [ ! -f /etc/apache2/apache2.conf.orig ]; then
+	printf "Backing up original configuration file to /etc/apache2/apache2.conf.orig\n"
+	cp /etc/apache2/apache2.conf /etc/apache2/apache2.conf.orig
+fi
+
+printf "Changing MaxKeepAliveRequests to 0...\n"
+FIND="^\s*MaxKeepAliveRequests \s*[0-9]*"
+REPLACE="MaxKeepAliveRequests 0"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/apache2/apache2.conf
+
+printf "Adding browser caching configuration...\n"
+FIND="#<\/Directory>"
+REPLACE="#<\/Directory>\n\n# Disable server signature\nServerSignature Off\nServerTokens Prod\n\n# Browser Caching #\nExpiresActive On\nExpiresDefault \"access plus 30 days\"\nExpiresByType text\/html \"access plus 15 minutes\"\nHeader unset Last-Modified\nHeader unset ETag\nFileETag None\n\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/apache2/apache2.conf
+
+if [ ! -f /etc/apache2/mods-available/deflate.conf.orig ]; then
+	printf "Backing up original compression configuration file to /etc/apache2/mods-available/deflate.conf.orig\n"
+	cp /etc/apache2/mods-available/deflate.conf /etc/apache2/mods-available/deflate.conf.orig
+fi
+
+
+
+
+
+# APACHE memory settings
+PROCMEM=32 # Average amount of memory used by each request
+SYSMEM=$(grep MemTotal /proc/meminfo | awk '{ print int($2/1024) }') # System memory
+SYSMEN=${SYSMEM/.*}
+AVAILMEM=$(((SYSMEM-256)*75/100)) # Memory available to Apache: (Total - 256MB) x 80%
+MAXWORKERS=$((AVAILMEM/PROCMEM)) # Max number of request workers: available memory / average request memory
+STARTSERVERS=$((MAXWORKERS/10)) # Min number of servers started
+SPARESERVERS=$((STARTSERVERS*4)) # Max number of spare servers started
+
+printf "Updating memory settings...\n"
+FIND="^\s*StartServers\s*[0-9]*"
+REPLACE="\tStartServers\t\t\t$STARTSERVERS"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/apache2/mods-available/mpm_prefork.conf
+FIND="^\s*MinSpareServers\s*[0-9]*"
+REPLACE="\tMinSpareServers\t\t $STARTSERVERS"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/apache2/mods-available/mpm_prefork.conf
+FIND="^\s*MaxSpareServers\s*[0-9]*"
+REPLACE="\tMaxSpareServers\t\t $SPARESERVERS"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/apache2/mods-available/mpm_prefork.conf
+FIND="^\s*MaxRequestWorkers\s*[0-9]*"
+REPLACE="\tMaxRequestWorkers\t\t$MAXWORKERS"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/apache2/mods-available/mpm_prefork.conf
+FIND="^\s*MaxConnectionsPerChild\s*[0-9]*"
+REPLACE="\tMaxConnectionsPerChild  0"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/apache2/mods-available/mpm_prefork.conf
+
+
+
+# Virtual Hosts
+printf $DIVIDER
+printf "VIRTUAL HOSTS\n"
+printf "The script will setup the base virtual hosts configuration. Using the main domain name it will:\n"
+printf " * Setup configuration files for example.com (with alias www.example.com), and dev.example.com\n"
+printf " * Setup the necessary directories\n"
+while true; do
+	read -p "Please enter the main domain (e.g. example.com): " domain
+	case $domain in
+		"" ) printf "Domain may not be left blank\n";;
+		* ) break;;
+	esac
+done
+
+# Get IPv4
+IPV4=$(ip -4 addr | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -v ^127.0.0.1)
+
+# Backup previous virtual host files
+if [ -f /etc/apache2/sites-available/$domain.conf ]; then
+	printf "Backing up existing virtual host configuration file to /etc/apache2/sites-available/$domain.conf.bak\n"
+	cp /etc/apache2/sites-available/$domain.conf /etc/apache2/sites-available/$domain.conf.bak
+fi
+
+# Production
+VIRTUALHOST="<VirtualHost $IPV4:80>\n\tServerName $domain\n\tServerAlias www.$domain\n\tDocumentRoot /var/www/$domain/public_html/\n\tErrorLog /var/www/$domain/logs/error.log\n\tCustomLog /var/www/$domain/logs/access.log combined\n</VirtualHost>\n";
+printf "$VIRTUALHOST" > /etc/apache2/sites-available/$domain.conf
+
+# Development
+VIRTUALHOST="<VirtualHost $IPV4:80>\n\tServerName dev.$domain\n\tDocumentRoot /var/www/dev.$domain/public_html/\n\tErrorLog /var/www/dev.$domain/logs/error.log\n\tCustomLog /var/www/dev.$domain/logs/access.log combined\n</VirtualHost>\n";
+printf "$VIRTUALHOST" > /etc/apache2/sites-available/dev.$domain.conf
+
+################################ is it needed?########################
+# Create directories
+mkdir -p /var/www/$domain/public_html
+mkdir -p /var/www/$domain/logs
+mkdir -p /var/www/dev.$domain/public_html
+mkdir -p /var/www/dev.$domain/logs
+chown -R www-data:www-data /var/www
+###############################################################
+# Enable sites
+a2ensite $domain
+a2ensite dev.$domain
+service apache2 reload
+
+# PHP
+printf $DIVIDER
+printf "PHP\n"
+printf "The script will update PHP configuration\n"
+read -p "Press ENTER to continue"
+
+if [ ! -f /etc/php/7.0/apache2/php.ini.orig ]; then
+	printf "Backing up PHP.ini configuration file to /etc/php/7.0/apache2/php.ini.orig\n"
+	cp /etc/php/7.0/apache2/php.ini /etc/php/7.0/apache2/php.ini.orig
+fi
+
+FIND="^\s*output_buffering\s*=\s*.*"
+REPLACE="output_buffering = Off"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*max_execution_time\s*=\s*.*"
+REPLACE="max_execution_time = 60"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*error_reporting\s*=\s*.*"
+REPLACE="error_reporting = E_ALL \& ~E_NOTICE \& ~E_STRICT \& ~E_DEPRECATED"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*log_errors_max_len\s*=\s*.*"
+REPLACE="log_errors_max_len = 0"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*post_max_size\s*=\s*.*"
+REPLACE="post_max_size = 20M"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*upload_max_filesize\s*=\s*.*"
+REPLACE="upload_max_filesize = 20M"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*short_open_tag\s*=\s*.*"
+REPLACE="short_open_tag = On"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*;\s*max_input_vars\s*=\s*.*" # this is commented in the original file
+REPLACE="max_input_vars = 5000"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*;\s*opcache\.enable\s*=\s*.*" # this is commented in the original file
+REPLACE="opcache.enable = 0"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*;\s*opcache\.memory_consumption\s*=\s*.*" # this is commented in the original file
+REPLACE="opcache.memory_consumption = 256"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*;\s*opcache\.max_accelerated_files\s*=\s*.*" # this is commented in the original file
+REPLACE="opcache.max_accelerated_files = 5000"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+FIND="^\s*;\s*opcache\.revalidate_freq\s*=\s*.*" # this is commented in the original file
+REPLACE="opcache.revalidate_freq = 30"
+printf "php.ini: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/php/7.0/apache2/php.ini
+
+# php7.0.conf correct settings
+if [ ! -f /etc/apache2/mods-available/php7.0.conf.orig ]; then
+	printf "Backing up php7.0.conf configuration file to /etc/apache2/mods-available/php7.0.conf.orig\n"
+	cp /etc/apache2/mods-available/php7.0.conf /etc/apache2/mods-available/php7.0.conf.orig
+fi
+
+printf "Correct settings in php7.0.conf\n"
+FIND="Order Deny,Allow"
+REPLACE="# Order Deny,Allow"
+sed -i "s/$FIND/$REPLACE/g" /etc/apache2/mods-available/php7.0.conf
+
+FIND="Deny from all"
+REPLACE="# Deny from all\n\tRequire all granted"
+sed -i "s/$FIND/$REPLACE/g" /etc/apache2/mods-available/php7.0.conf
+
+# Restart Apache
+printf "Restarting Apache...\n"
+service apache2 restart
+
+#####################################################################################
+# MySQL
+printf $DIVIDER
+printf "MYSQL\n"
+printf "The script will update MySQL and setup intial databases\n"
+read -p "Press ENTER to continue"
+
+if [ ! -f /etc/mysql/my.cnf.orig ]; then
+	printf "Backing up my.cnf configuration file to /etc/mysql/my.cnf.orig\n"
+	cp /etc/mysql/my.cnf /etc/mysql/my.cnf.orig
+fi
+
+printf "Updating configuration\n"
+
+FIND="^\s*key_buffer\s*=\s*.*"
+REPLACE="key_buffer=16M"
+printf "my.cnf: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/mysql/my.cnf
+
+FIND="^\s*max_allowed_packet\s*=\s*.*"
+REPLACE="max_allowed_packet=16M"
+printf "my.cnf: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/mysql/my.cnf
+
+FIND="^\s*thread_stack\s*=\s*.*"
+REPLACE="thread_stack=192K"
+printf "my.cnf: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/mysql/my.cnf
+
+FIND="^\s*thread_cache_size\s*=\s*.*"
+REPLACE="thread_cache_size=8"
+printf "my.cnf: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/mysql/my.cnf
+
+FIND="^\s*#\s*table_cache\s*=\s*.*" # commented by default
+REPLACE="table_cache=64"
+printf "my.cnf: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/mysql/my.cnf
+
+FIND="^\s*#\s*log_slow_queries\s*=\s*.*" # commented by default
+REPLACE="log_slow_queries = /var/log/mysql/mysql-slow.log"
+printf "my.cnf: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/mysql/my.cnf
+
+FIND="^\s*#\s*long_query_time\s*=\s*.*" # commented by default
+REPLACE="long_query_time=1"
+printf "my.cnf: $REPLACE\n"
+sed -i "0,/$FIND/s/$FIND/$REPLACE/m" /etc/mysql/my.cnf
+
+printf "Secure MySQL installation\n"
+printf "Make sure you enter a new root password, and answer all questions with Y\n"
+read -p "Please ENTER to continue "
+mysql_secure_installation
+
+printf "Setup databases and users\n"
+
+while true; do
+	read -sp "Enter password for MySQL root: " mysqlrootpsw
+	case $mysqlrootpsw in
+		"" ) printf "Password may not be left blank\n";;
+		* ) break;;
+	esac
+done
+
+printf "\nPlease set name for databases, users and passwords\n"
+while true; do
+	read -p "Production database name (recommended: use domain without TLD, for mydomain.com use mydomain): " dbname
+	case $dbname in
+		"" ) printf "Database name may not be left blank\n";;
+		* ) break;;
+	esac
+done
+while true; do
+	read -p "Production database user (recommended: use same as database name, max 16 characters): " dbuser
+	case $dbuser in
+		"" ) printf "User name may not be left blank\n";;
+		* ) break;;
+	esac
+done
+while true; do
+	read -sp "Production database password: " dbpass
+	case $dbpass in
+		"" ) printf "\nPassword may not be left blank\n";;
+		* ) break;;
+	esac
+done
+while true; do
+	printf "\n"
+	read -p "Development database name (recommended: use domain without TLD followed by _dev, for mydomain.com use mydomain_dev): " devdbname
+	case $devdbname in
+		"" ) printf "Database name may not be left blank\n";;
+		* ) break;;
+	esac
+done
+while true; do
+	read -p "Development database user (recommended: use same as database name, max 16 characters): " devdbuser
+	case $devdbuser in
+		"" ) printf "User name may not be left blank\n";;
+		* ) break;;
+	esac
+done
+while true; do
+	read -sp "Development database password: " devdbpass
+	case $devdbpass in
+		"" ) printf "\nPassword may not be left blank\n";;
+		* ) break;;
+	esac
+done
+
+###############################################################################
+printf "Create database $dbname...\n"
+mysql -u root -p$mysqlrootpsw -e "CREATE DATABASE $dbname;"
+printf "Create user $dbuser...\n"
+mysql -u root -p$mysqlrootpsw -e "CREATE USER '$dbuser'@localhost IDENTIFIED BY '$dbpass';"
+printf "Grant $dbuser all privileges on $dbname...\n"
+mysql -u root -p$mysqlrootpsw -e "GRANT ALL PRIVILEGES ON $dbname.* TO '$dbuser'@localhost;"
+printf "Create database $devdbname...\n"
+mysql -u root -p$mysqlrootpsw -e "CREATE DATABASE $devdbname;"
+printf "Create user $devdbuser...\n"
+mysql -u root -p$mysqlrootpsw -e "CREATE USER '$devdbuser'@localhost IDENTIFIED BY '$devdbpass';"
+printf "Grant $devdbuser all privileges on $devdbname...\n"
+mysql -u root -p$mysqlrootpsw -e "GRANT ALL PRIVILEGES ON $devdbname.* TO '$devdbuser'@localhost;"
+
+printf "Restart MySQL...\n"
+service mysql restart
+
+######################################################################################################
